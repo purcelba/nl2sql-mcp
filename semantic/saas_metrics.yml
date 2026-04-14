@@ -1,0 +1,99 @@
+semantic_models:
+  - name: users
+    description: One row per registered user.
+    model: ref('dim_users')
+    entities:
+      - name: user_id
+        type: primary
+    dimensions:
+      - name: signup_date
+        type: time
+        type_params:
+          time_granularity: day
+      - name: plan_type
+        type: categorical
+      - name: country
+        type: categorical
+    measures:
+      - name: user_count
+        agg: count
+        expr: user_id
+
+  - name: events
+    description: One row per product event.
+    model: ref('fct_events')
+    entities:
+      - name: event_id
+        type: primary
+      - name: user_id
+        type: foreign
+    dimensions:
+      - name: event_timestamp
+        type: time
+        type_params:
+          time_granularity: day
+      - name: event_type
+        type: categorical
+    measures:
+      - name: event_count
+        agg: count
+        expr: event_id
+
+  - name: subscriptions
+    description: One row per subscription period.
+    model: ref('fct_subscriptions')
+    entities:
+      - name: subscription_id
+        type: primary
+      - name: user_id
+        type: foreign
+    dimensions:
+      - name: plan_type
+        type: categorical
+      - name: started_at
+        type: time
+        type_params:
+          time_granularity: day
+      - name: is_trial
+        type: categorical
+    measures:
+      - name: mrr
+        agg: sum
+        expr: monthly_recurring_revenue
+      - name: subscription_count
+        agg: count
+        expr: subscription_id
+
+metrics:
+  - name: monthly_active_users
+    description: Distinct users with at least one event in the last 30 days.
+    type: simple
+    type_params:
+      measure: event_count
+
+  - name: churn_rate
+    description: Fraction of subscriptions that ended in the period.
+    type: ratio
+    type_params:
+      numerator: subscription_count
+      denominator: user_count
+
+  - name: mrr
+    description: Monthly recurring revenue across active subscriptions.
+    type: simple
+    type_params:
+      measure: mrr
+
+  - name: trial_conversion_rate
+    description: Fraction of trial subscriptions that converted to paid.
+    type: ratio
+    type_params:
+      numerator: subscription_count
+      denominator: user_count
+
+  - name: average_revenue_per_user
+    description: MRR divided by active user count.
+    type: ratio
+    type_params:
+      numerator: mrr
+      denominator: user_count

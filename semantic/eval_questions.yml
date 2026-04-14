@@ -1,0 +1,70 @@
+# Labeled evaluation set for the gate pattern.
+# Each entry: question + expected recommendation (proceed | clarify | reject).
+
+questions:
+  # --- Expect PROCEED: clear, on-topic, maps to available metrics/dimensions ---
+  - question: what is the mrr this quarter
+    expected: proceed
+  - question: how many users signed up last month
+    expected: proceed
+  - question: show monthly active users trend by plan type
+    expected: proceed
+  - question: what is the churn rate for the pro plan last quarter
+    expected: proceed
+  - question: average revenue per user by country this year
+    expected: proceed
+  - question: count of subscriptions by plan type
+    expected: proceed
+  - question: how many events happened yesterday by event type
+    expected: proceed
+  - question: trial conversion rate by plan type for the last 6 months
+    expected: proceed
+  - question: mrr growth rate month over month
+    expected: proceed
+  - question: how many users had at least one event last week
+    expected: proceed
+
+  # --- Expect CLARIFY: on-topic but ambiguous, partial map, or missing context ---
+  # These test the middle band: some signal, but not enough to proceed confidently.
+  - question: show me customer growth            # "customer" is a synonym for user; no metric named
+    expected: clarify
+  - question: what is our revenue                # "revenue" ≈ mrr but not exact; no time range
+    expected: clarify
+  - question: how are things going this month   # vague framing but temporal + on-topic
+    expected: clarify
+  - question: compare plans                      # no metric specified
+    expected: clarify
+  - question: user activity last week            # "activity" ≈ events; underspecified
+    expected: clarify
+  - question: top customers by spend             # customer→user, spend→mrr synonyms
+    expected: clarify
+  - question: churn                              # one-word; metric exists, no qualifier
+    expected: clarify
+  - question: signups                            # metric-ish but no aggregation or window
+    expected: clarify
+  - question: enterprise breakdown               # plan_type dimension but no measure
+    expected: clarify
+  - question: what changed recently              # on-topic feel, no concrete mapping
+    expected: clarify
+
+  # --- Expect REJECT: out of scope, nonsensical, or asking about unavailable data ---
+  - question: what is the weather in tokyo today
+    expected: reject
+  - question: how many widgets did we ship
+    expected: reject
+  - question: list all employee salaries
+    expected: reject
+  - question: what is the capital of france
+    expected: reject
+  - question: show me the source code of this server
+    expected: reject
+  - question: who is the ceo
+    expected: reject
+  - question: translate this question to spanish
+    expected: reject
+  - question: generate a marketing email for our pro plan
+    expected: reject
+  - question: what stock should i buy today
+    expected: reject
+  - question: asdf qwerty zxcv
+    expected: reject
