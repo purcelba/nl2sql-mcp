@@ -245,7 +245,67 @@ Extend the `clarify` branch so `next_step` is joined by a `suggestions` list
 
 ---
 
-## Phase 6 — Transport Decision
-**Goal:** Decide if stdio is sufficient or remote hosting is needed.
-- Keep stdio if: each developer runs their own local instance
-- Move to SSE/HTTP if: multiple users need to share one hosted server instance
+## Phase 6 — Transport Decision ✓ DONE
+**Decision:** keep **stdio**. Each developer runs their own local instance;
+no need to share a hosted server. Revisit if a team deployment becomes needed.
+
+---
+
+## Phase 7 — Local Postgres for End-to-End Testing ✓ DONE
+**Goal:** Stand up a real Postgres warehouse locally via docker-compose,
+populated with data matching the semantic layer, so we can execute the SQL
+that `should_execute` greenlights and validate results end-to-end.
+
+### Design
+- `docker-compose.yml` at the repo root runs Postgres on a fixed port
+- Schema + seed data live in `db/` (init scripts auto-loaded by the Postgres
+  container on first boot)
+- Schema mirrors the dbt model refs used in the semantic layer: `dim_users`,
+  `fct_events`, `fct_subscriptions`
+- Keep it small: ~500 users, ~5k events, ~800 subscriptions — enough to get
+  non-trivial answers without slow seeding
+- Do NOT add SQL execution to the MCP server yet (still a separate concern).
+  A standalone `scripts/run_sql.py` is enough for manual testing.
+
+### Tasks
+
+**7a — docker-compose + schema**
+- [x] Add `docker-compose.yml` with a single `postgres:16` service, named
+  volume for persistence, env vars for user/password/db, port 5432 mapped
+- [x] Create `db/01_schema.sql` defining `dim_users`, `fct_events`,
+  `fct_subscriptions` with columns matching the dimensions/measures in
+  `semantic/saas_metrics.yml` (plus primary keys and foreign keys on
+  `user_id`)
+- [x] Document `docker compose up -d` / `down` usage in a short
+  `db/README.md`
+
+**7b — Seed data**
+- [x] Write `db/02_seed.sql` (or `db/seed.py` if generation logic is
+  non-trivial) that inserts ~500 users spread across signup_date, plan_type,
+  country; ~800 subscriptions (mix of trial/paid, some churned); ~5k events
+  across the user base in the last 90 days
+- [x] Verify with `docker compose exec postgres psql ... -c "SELECT ..."`
+  that row counts and distributions look reasonable
+
+**7c — SQL runner**
+- [x] Add `scripts/run_sql.py` that connects to local Postgres (env vars or
+  defaults), takes a SQL string on stdin or via arg, and prints results as a
+  nicely formatted table
+- [x] Add `psycopg[binary]` to the installed deps
+- [x] Manual smoke test: run the example query from the "new users in
+  january" rephrase and confirm it returns expected results
+
+**7d — End-to-end walkthrough**
+- [x] Pick 3 eval-set proceed questions. For each:
+  1. Call `should_execute` via MCP — confirm `proceed`
+  2. Generate SQL with Haiku (reuse `_generate_sql` from sql_complexity
+     scorer via a small wrapper if convenient)
+  3. Run the SQL through `scripts/run_sql.py`
+  4. Sanity-check results
+- [x] Document the walkthrough in `docs/e2e_walkthrough.md`
+
+**7e — CI-safe tests**
+- [x] Mark any tests that actually connect to Postgres with a pytest marker
+  (e.g. `@pytest.mark.db`) and skip by default — tests should still pass
+  without the container running
+- [x] Add a short "running the db-backed tests" section to `db/README.md`

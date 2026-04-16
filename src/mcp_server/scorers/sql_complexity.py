@@ -12,14 +12,24 @@ from mcp_server.semantic_loader import (
 
 MODEL = "claude-haiku-4-5-20251001"
 
-SYSTEM_PROMPT = """You generate a single SQL query that answers the user's question \
-against a SaaS analytics warehouse. Return ONLY the SQL, no prose, no markdown fences.
+SYSTEM_PROMPT = """You generate a single Postgres SQL query that answers the \
+user's question against a SaaS analytics warehouse. Return ONLY the SQL, no \
+prose, no markdown fences.
 
-Available metrics: {metrics}
-Available dimensions: {dimensions}
-Available entities: {entities}
+Tables and columns:
+- dim_users(user_id BIGINT, signup_date DATE, plan_type TEXT, country TEXT)
+- fct_subscriptions(subscription_id BIGINT, user_id BIGINT, plan_type TEXT,
+  started_at DATE, ended_at DATE, is_trial BOOLEAN,
+  monthly_recurring_revenue NUMERIC)
+- fct_events(event_id BIGINT, user_id BIGINT, event_timestamp TIMESTAMP,
+  event_type TEXT)
 
-Assume tables: dim_users, fct_events, fct_subscriptions. Keep the query realistic."""
+Use CURRENT_DATE for "today". A subscription is active when ended_at IS NULL.
+
+Semantic metrics (for reference only; column names above are authoritative):
+{metrics}
+Dimensions: {dimensions}
+Entities: {entities}"""
 
 
 def _generate_sql(question: str, client: Anthropic) -> str:
@@ -34,7 +44,18 @@ def _generate_sql(question: str, client: Anthropic) -> str:
         system=system,
         messages=[{"role": "user", "content": question}],
     )
-    return resp.content[0].text.strip()
+    return _strip_fences(resp.content[0].text.strip())
+
+
+def _strip_fences(text: str) -> str:
+    text = text.strip()
+    if text.startswith("```"):
+        lines = text.splitlines()
+        lines = lines[1:]
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        text = "\n".join(lines).strip()
+    return text
 
 
 def _score_sql(sql: str) -> tuple[float, dict]:

@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: nl2sql-postgres
+    environment:
+      POSTGRES_USER: nl2sql
+      POSTGRES_PASSWORD: nl2sql
+      POSTGRES_DB: nl2sql
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db:/docker-entrypoint-initdb.d:ro
+
+volumes:
+  pgdata:
